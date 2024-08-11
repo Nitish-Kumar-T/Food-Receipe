@@ -11,23 +11,31 @@
 <body>
     <header>
         <h1>Recipe App</h1>
-        <button id="darkModeToggle">Toggle Dark Mode</button>
+        <input type="text" id="searchInput" placeholder="Search for recipes...">
+        <select id="categoryFilter">
+        </select>
+        <select id="dietFilter">
+        </select>
+        <button onclick="showShoppingList()">View Shopping List</button>
     </header>
 
     <main>
-        <section id="recipeOfTheDay">
+        <div id="recipeOfTheDay">
             <h2>Recipe of the Day: <span></span></h2>
-        </section>
-
-        <div id="searchSection" class="search-bar">
-            <input type="text" id="searchInput" placeholder="Search recipes...">
-            <button onclick="searchRecipes()">Search</button>
         </div>
-        <section id="recipeGrid">
-        </section>
+        <div id="recipeGrid">
+
+        </div>
     </main>
 
-    <script src="scripts.js"></script>
+    <div id="shoppingListModal" style="display:none;">
+        <div id="shoppingListContainer">
+
+        </div>
+        <button onclick="document.getElementById('shoppingListModal').style.display='none'">Close</button>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 
 </html>

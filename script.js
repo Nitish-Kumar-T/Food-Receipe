@@ -1,63 +1,7 @@
-const recipes = [
-    {
-        id: 1,
-        name: "Spaghetti Carbonara",
-        category: "Dinner",
-        ingredients: [
-            "400g spaghetti",
-            "200g pancetta",
-            "4 large eggs",
-            "100g Parmesan cheese",
-            "Black pepper"
-        ],
-        instructions: [
-            "Cook spaghetti according to package instructions.",
-            "Fry pancetta until crispy.",
-            "Beat eggs with grated Parmesan.",
-            "Drain pasta, mix with pancetta, then quickly stir in egg mixture.",
-            "Season with black pepper and serve immediately."
-        ],
-        prepTime: "10 minutes",
-        cookTime: "15 minutes",
-        servings: 4,
-        rating: 4.5,
-        nutrition: {
-            calories: 600,
-            protein: 25,
-            carbs: 70,
-            fat: 30
-        }
-    },
-    {
-        id: 2,
-        name: "Classic Caesar Salad",
-        category: "Lunch",
-        ingredients: [
-            "1 large romaine lettuce",
-            "Croutons",
-            "50g Parmesan cheese",
-            "Caesar dressing"
-        ],
-        instructions: [
-            "Wash and chop the romaine lettuce.",
-            "Toss lettuce with Caesar dressing.",
-            "Add croutons and grated Parmesan cheese.",
-            "Serve chilled."
-        ],
-        prepTime: "15 minutes",
-        cookTime: "0 minutes",
-        servings: 2,
-        rating: 4.2,
-        nutrition: {
-            calories: 350,
-            protein: 10,
-            carbs: 15,
-            fat: 30
-        }
-    }
-    // Add more recipes here...
-];
+const apiKey = 'f842089f19a84357b8edb76b014d278f';
+const apiUrl = 'https://api.spoonacular.com/recipes/complexSearch';
 
+let recipes = [];
 let favorites = [];
 let mealPlan = {
     monday: [],
@@ -70,24 +14,40 @@ let mealPlan = {
 };
 let shoppingList = [];
 
+async function fetchRecipes(query = '') {
+    try {
+        const response = await fetch(`${apiUrl}?apiKey=${apiKey}&query=${query}&number=10&addRecipeInformation=true`);
+        const data = await response.json();
+        console.log('API response:', data);
+        recipes = data.results || [];
+        displayRecipeCards(recipes);
+        populateFilters();
+        setRecipeOfTheDay();
+    } catch (error) {
+        console.error('Error fetching recipes:', error);
+    }
+}
+
 function displayRecipeCards(recipesToDisplay = recipes) {
     const recipeGrid = document.getElementById('recipeGrid');
     recipeGrid.innerHTML = '';
+
     if (recipesToDisplay.length === 0) {
         recipeGrid.innerHTML = '<p>No recipes available.</p>';
         return;
     }
+
     recipesToDisplay.forEach(recipe => {
         const card = document.createElement('div');
         card.className = 'recipe-card';
         card.innerHTML = `
-            <img src="${recipe.image}" alt="${recipe.name}">
-            <h3>${recipe.name}</h3>
+            <img src="${recipe.image || 'default-image.jpg'}" alt="${recipe.title || 'Recipe Image'}">
+            <h3>${recipe.title || recipe.name || 'Unnamed Recipe'}</h3>
             <div class="recipe-meta">
-                <span>${recipe.category}</span>
-                <span class="rating">★ ${recipe.rating.toFixed(1)}</span>
+                <span>${recipe.dishTypes?.[0] || 'Not specified'}</span>
+                <span class="rating">★ ${recipe.spoonacularScore ? (recipe.spoonacularScore / 20).toFixed(1) : 'N/A'}</span>
             </div>
-            <p>Prep: ${recipe.prepTime} | Cook: ${recipe.cookTime}</p>
+            <p>Prep: ${recipe.preparationMinutes || 'N/A'} | Cook: ${recipe.cookingMinutes || 'N/A'}</p>
             <button onclick="showFullRecipe(${recipe.id})">View Recipe</button>
             <button onclick="toggleFavorite(${recipe.id})">
                 ${favorites.includes(recipe.id) ? '❤️' : '🤍'}
@@ -100,41 +60,46 @@ function displayRecipeCards(recipesToDisplay = recipes) {
 
 function showFullRecipe(id) {
     const recipe = recipes.find(r => r.id === id);
+    if (!recipe) {
+        alert('Recipe not found!');
+        return;
+    }
+
     const recipeGrid = document.getElementById('recipeGrid');
     recipeGrid.innerHTML = `
         <div class="full-recipe">
-            <h2>${recipe.name}</h2>
-            <img src="${recipe.image}" alt="${recipe.name}">
-            <p>Category: ${recipe.category}</p>
-            <p>Diet: ${recipe.diet || 'Not specified'}</p>
-            <p>Prep Time: ${recipe.prepTime} | Cook Time: ${recipe.cookTime}</p>
-            <p>Servings: ${recipe.servings}</p>
+            <h2>${recipe.title || 'Untitled Recipe'}</h2>
+            <img src="${recipe.image || 'default-image.jpg'}" alt="${recipe.title || 'Recipe Image'}">
+            <p>Category: ${recipe.dishTypes?.join(', ') || 'Not specified'}</p>
+            <p>Diet: ${recipe.diets?.join(', ') || 'Not specified'}</p>
+            <p>Prep Time: ${recipe.preparationMinutes || 'N/A'} | Cook Time: ${recipe.cookingMinutes || 'N/A'}</p>
+            <p>Servings: ${recipe.servings || 'N/A'}</p>
             <div class="ingredients">
                 <h3>Ingredients:</h3>
                 <ul>
-                    ${recipe.ingredients.map(ingredient => `<li>${ingredient}</li>`).join('')}
+                    ${recipe.extendedIngredients ? recipe.extendedIngredients.map(ingredient => `<li>${ingredient.name}</li>`).join('') : '<li>No ingredients listed</li>'}
                 </ul>
             </div>
             <div class="instructions">
                 <h3>Instructions:</h3>
                 <ol>
-                    ${recipe.instructions.map(instruction => `<li>${instruction}</li>`).join('')}
+                    ${recipe.instructions ? recipe.instructions.split('.').map(instruction => `<li>${instruction.trim()}</li>`).join('') : '<li>No instructions listed</li>'}
                 </ol>
             </div>
             <div class="nutrition">
                 <h3>Nutrition Information:</h3>
-                <p>Calories: ${recipe.nutrition.calories}</p>
-                <p>Protein: ${recipe.nutrition.protein}g</p>
-                <p>Carbs: ${recipe.nutrition.carbs}g</p>
-                <p>Fat: ${recipe.nutrition.fat}g</p>
+                <p>Calories: ${recipe.nutrition?.nutrients?.find(nutrient => nutrient.name === 'Calories')?.amount || 'N/A'}</p>
+                <p>Protein: ${recipe.nutrition?.nutrients?.find(nutrient => nutrient.name === 'Protein')?.amount || 'N/A'}g</p>
+                <p>Carbs: ${recipe.nutrition?.nutrients?.find(nutrient => nutrient.name === 'Carbohydrates')?.amount || 'N/A'}g</p>
+                <p>Fat: ${recipe.nutrition?.nutrients?.find(nutrient => nutrient.name === 'Fat')?.amount || 'N/A'}g</p>
             </div>
             <div class="social-share">
                 <button onclick="shareRecipe('facebook', ${recipe.id})" class="facebook">
-                    <i class="fab fa-facebook-f"></i>
+                    <span class="icon">🔵</span>
                     <span>Share on Facebook</span>
                 </button>
                 <button onclick="shareRecipe('twitter', ${recipe.id})" class="twitter">
-                    <i class="fab fa-twitter"></i>
+                    <span class="icon">🐦</span>
                     <span>Share on Twitter</span>
                 </button>
             </div>
@@ -146,10 +111,10 @@ function showFullRecipe(id) {
 
 function searchRecipes() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const filteredRecipes = recipes.filter(recipe => 
-        recipe.name.toLowerCase().includes(searchTerm) ||
-        recipe.category.toLowerCase().includes(searchTerm) ||
-        recipe.ingredients.some(ingredient => ingredient.toLowerCase().includes(searchTerm))
+    const filteredRecipes = recipes.filter(recipe =>
+        recipe.title.toLowerCase().includes(searchTerm) ||
+        recipe.dishTypes?.some(type => type.toLowerCase().includes(searchTerm)) ||
+        (recipe.extendedIngredients && recipe.extendedIngredients.some(ingredient => ingredient.name.toLowerCase().includes(searchTerm)))
     );
     displayRecipeCards(filteredRecipes);
 }
@@ -166,14 +131,20 @@ function toggleFavorite(id) {
 
 function shareRecipe(platform, id) {
     const recipe = recipes.find(r => r.id === id);
-    let shareUrl;
+    if (!recipe) {
+        alert('Recipe not found!');
+        return;
+    }
 
-    switch(platform) {
+    let shareUrl;
+    const currentUrl = encodeURIComponent(window.location.href);
+
+    switch (platform) {
         case 'facebook':
-            shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
+            shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${currentUrl}`;
             break;
         case 'twitter':
-            shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this ${recipe.name} recipe!`)}&url=${encodeURIComponent(window.location.href)}`;
+            shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this ${recipe.title || recipe.name} recipe!`)}&url=${currentUrl}`;
             break;
     }
 
@@ -184,7 +155,7 @@ function setRecipeOfTheDay() {
     if (recipes.length > 0) {
         const randomIndex = Math.floor(Math.random() * recipes.length);
         const recipeOfTheDay = recipes[randomIndex];
-        document.querySelector('#recipeOfTheDay span').textContent = recipeOfTheDay.name;
+        document.querySelector('#recipeOfTheDay span').textContent = recipeOfTheDay.title || recipeOfTheDay.name;
     } else {
         document.querySelector('#recipeOfTheDay span').textContent = 'No Recipe Available';
     }
@@ -194,16 +165,19 @@ function populateFilters() {
     const categoryFilter = document.getElementById('categoryFilter');
     const dietFilter = document.getElementById('dietFilter');
     
-    const categories = [...new Set(recipes.map(recipe => recipe.category))];
-    const diets = [...new Set(recipes.map(recipe => recipe.diet).filter(diet => diet))];
+    categoryFilter.innerHTML = '<option value="">All Categories</option>';
+    dietFilter.innerHTML = '<option value="">All Diets</option>';
     
+    const categories = [...new Set(recipes.flatMap(recipe => recipe.dishTypes || []))];
+    const diets = [...new Set(recipes.flatMap(recipe => recipe.diets || []))];
+
     categories.forEach(category => {
         const option = document.createElement('option');
         option.value = category;
         option.textContent = category;
         categoryFilter.appendChild(option);
     });
-    
+
     diets.forEach(diet => {
         const option = document.createElement('option');
         option.value = diet;
@@ -216,9 +190,9 @@ function applyFilters() {
     const categoryFilter = document.getElementById('categoryFilter').value;
     const dietFilter = document.getElementById('dietFilter').value;
     
-    const filteredRecipes = recipes.filter(recipe => 
-        (categoryFilter === '' || recipe.category === categoryFilter) &&
-        (dietFilter === '' || recipe.diet === dietFilter)
+    const filteredRecipes = recipes.filter(recipe =>
+        (categoryFilter === '' || recipe.dishTypes?.includes(categoryFilter)) &&
+        (dietFilter === '' || recipe.diets?.includes(dietFilter))
     );
     
     displayRecipeCards(filteredRecipes);
@@ -226,55 +200,56 @@ function applyFilters() {
 
 function addToMealPlan(id) {
     const recipe = recipes.find(r => r.id === id);
+    if (!recipe) {
+        alert('Recipe not found!');
+        return;
+    }
+
     const day = prompt('Enter the day of the week (e.g., monday, tuesday, etc.):').toLowerCase();
     if (mealPlan[day]) {
         mealPlan[day].push(recipe);
-        alert(`${recipe.name} added to ${day}'s meal plan!`);
+        alert(`${recipe.title || 'Recipe'} added to ${day.charAt(0).toUpperCase() + day.slice(1)}'s meal plan.`);
     } else {
-        alert('Invalid day entered. Please try again.');
+        alert('Invalid day. Please enter a valid day of the week.');
     }
-}
-
-function showMealPlanner() {
-    const modal = document.getElementById('mealPlannerModal');
-    const mealPlanContainer = document.getElementById('mealPlanContainer');
-    
-    mealPlanContainer.innerHTML = '';
-    
-    Object.keys(mealPlan).forEach(day => {
-        const daySection = document.createElement('div');
-        daySection.className = 'meal-plan-day';
-        daySection.innerHTML = `
-            <h3>${day.charAt(0).toUpperCase() + day.slice(1)}</h3>
-            <ul>
-                ${mealPlan[day].map(recipe => `<li>${recipe.name}</li>`).join('')}
-            </ul>
-        `;
-        mealPlanContainer.appendChild(daySection);
-    });
-    
-    modal.style.display = 'block';
-}
-
-function addToShoppingList(id) {
-    const recipe = recipes.find(r => r.id === id);
-    shoppingList.push(...recipe.ingredients);
-    alert(`${recipe.name}'s ingredients added to your shopping list!`);
 }
 
 function showShoppingList() {
     const modal = document.getElementById('shoppingListModal');
     const shoppingListContainer = document.getElementById('shoppingListContainer');
-    
-    shoppingListContainer.innerHTML = shoppingList.length > 0 ?
-        shoppingList.map(item => `<li>${item}</li>`).join('') :
-        '<p>No items in your shopping list.</p>';
-    
+    shoppingListContainer.innerHTML = '';
+
+    if (shoppingList.length > 0) {
+        shoppingList.sort().forEach(ingredient => {
+            const listItem = document.createElement('li');
+            listItem.textContent = ingredient;
+            shoppingListContainer.appendChild(listItem);
+        });
+    } else {
+        shoppingListContainer.innerHTML = '<p>No items in the shopping list.</p>';
+    }
+
     modal.style.display = 'block';
 }
 
+function addToShoppingList(id) {
+    const recipe = recipes.find(r => r.id === id);
+    if (!recipe) {
+        alert('Recipe not found!');
+        return;
+    }
+
+    recipe.extendedIngredients?.forEach(ingredient => {
+        if (!shoppingList.includes(ingredient.name)) {
+            shoppingList.push(ingredient.name);
+        }
+    });
+    alert(`${recipe.title || 'Recipe'} ingredients added to shopping list!`);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    displayRecipeCards();
-    setRecipeOfTheDay();
-    populateFilters();
+    fetchRecipes();
+    document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+    document.getElementById('dietFilter').addEventListener('change', applyFilters);
+    document.getElementById('searchInput').addEventListener('input', searchRecipes);
 });

@@ -45,14 +45,6 @@ nav ul li a {
     text-decoration: none;
 }
 
-main {
-    padding: 20px;
-}
-
-h1, h2, h3 {
-    color: var(--primary-color);
-}
-
 #darkModeToggle {
     position: fixed;
     top: 20px;
@@ -65,8 +57,14 @@ h1, h2, h3 {
     border-radius: 4px;
 }
 
-#recipeOfTheDay {
-    margin-bottom: 20px;
+main {
+    padding: 20px;
+}
+
+h1,
+h2,
+h3 {
+    color: var(--primary-color);
 }
 
 #searchSection {
@@ -187,6 +185,26 @@ h1, h2, h3 {
 
 .social-share button .icon {
     font-size: 16px;
+}
+
+#shoppingListModal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+#shoppingListContainer {
+    list-style-type: none;
+    padding: 0;
+}
+
+#shoppingListContainer li {
+    margin-bottom: 10px;
 }
 
 @media (max-width: 768px) {
