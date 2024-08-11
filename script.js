@@ -59,18 +59,29 @@ const recipes = [
 ];
 
 let favorites = [];
+let mealPlan = {
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+    saturday: [],
+    sunday: []
+};
+let shoppingList = [];
 
-function displayRecipeCards() {
+function displayRecipeCards(recipesToDisplay = recipes) {
     const recipeGrid = document.getElementById('recipeGrid');
     recipeGrid.innerHTML = '';
-    if (recipes.length === 0) {
+    if (recipesToDisplay.length === 0) {
         recipeGrid.innerHTML = '<p>No recipes available.</p>';
         return;
     }
-    recipes.forEach(recipe => {
+    recipesToDisplay.forEach(recipe => {
         const card = document.createElement('div');
         card.className = 'recipe-card';
         card.innerHTML = `
+            <img src="${recipe.image}" alt="${recipe.name}">
             <h3>${recipe.name}</h3>
             <div class="recipe-meta">
                 <span>${recipe.category}</span>
@@ -81,6 +92,7 @@ function displayRecipeCards() {
             <button onclick="toggleFavorite(${recipe.id})">
                 ${favorites.includes(recipe.id) ? '❤️' : '🤍'}
             </button>
+            <button onclick="addToMealPlan(${recipe.id})">Add to Meal Plan</button>
         `;
         recipeGrid.appendChild(card);
     });
@@ -92,7 +104,9 @@ function showFullRecipe(id) {
     recipeGrid.innerHTML = `
         <div class="full-recipe">
             <h2>${recipe.name}</h2>
+            <img src="${recipe.image}" alt="${recipe.name}">
             <p>Category: ${recipe.category}</p>
+            <p>Diet: ${recipe.diet || 'Not specified'}</p>
             <p>Prep Time: ${recipe.prepTime} | Cook Time: ${recipe.cookTime}</p>
             <p>Servings: ${recipe.servings}</p>
             <div class="ingredients">
@@ -116,14 +130,15 @@ function showFullRecipe(id) {
             </div>
             <div class="social-share">
                 <button onclick="shareRecipe('facebook', ${recipe.id})" class="facebook">
-                    <span class="icon">f</span>
+                    <i class="fab fa-facebook-f"></i>
                     <span>Share on Facebook</span>
                 </button>
                 <button onclick="shareRecipe('twitter', ${recipe.id})" class="twitter">
-                    <span class="icon">t</span>
+                    <i class="fab fa-twitter"></i>
                     <span>Share on Twitter</span>
                 </button>
             </div>
+            <button onclick="addToShoppingList(${recipe.id})">Add to Shopping List</button>
             <button onclick="displayRecipeCards()">Back to Recipes</button>
         </div>
     `;
@@ -136,33 +151,7 @@ function searchRecipes() {
         recipe.category.toLowerCase().includes(searchTerm) ||
         recipe.ingredients.some(ingredient => ingredient.toLowerCase().includes(searchTerm))
     );
-    displayFilteredRecipes(filteredRecipes);
-}
-
-function displayFilteredRecipes(filteredRecipes) {
-    const recipeGrid = document.getElementById('recipeGrid');
-    recipeGrid.innerHTML = '';
-    if (filteredRecipes.length === 0) {
-        recipeGrid.innerHTML = '<p>No matching recipes found.</p>';
-        return;
-    }
-    filteredRecipes.forEach(recipe => {
-        const card = document.createElement('div');
-        card.className = 'recipe-card';
-        card.innerHTML = `
-            <h3>${recipe.name}</h3>
-            <div class="recipe-meta">
-                <span>${recipe.category}</span>
-                <span class="rating">★ ${recipe.rating.toFixed(1)}</span>
-            </div>
-            <p>Prep: ${recipe.prepTime} | Cook: ${recipe.cookTime}</p>
-            <button onclick="showFullRecipe(${recipe.id})">View Recipe</button>
-            <button onclick="toggleFavorite(${recipe.id})">
-                ${favorites.includes(recipe.id) ? '❤️' : '🤍'}
-            </button>
-        `;
-        recipeGrid.appendChild(card);
-    });
+    displayRecipeCards(filteredRecipes);
 }
 
 function toggleFavorite(id) {
@@ -201,9 +190,91 @@ function setRecipeOfTheDay() {
     }
 }
 
-document.getElementById('darkModeToggle').addEventListener('click', function() {
-    document.body.classList.toggle('dark-mode');
-});
+function populateFilters() {
+    const categoryFilter = document.getElementById('categoryFilter');
+    const dietFilter = document.getElementById('dietFilter');
+    
+    const categories = [...new Set(recipes.map(recipe => recipe.category))];
+    const diets = [...new Set(recipes.map(recipe => recipe.diet).filter(diet => diet))];
+    
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFilter.appendChild(option);
+    });
+    
+    diets.forEach(diet => {
+        const option = document.createElement('option');
+        option.value = diet;
+        option.textContent = diet;
+        dietFilter.appendChild(option);
+    });
+}
 
-displayRecipeCards();
-setRecipeOfTheDay();
+function applyFilters() {
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const dietFilter = document.getElementById('dietFilter').value;
+    
+    const filteredRecipes = recipes.filter(recipe => 
+        (categoryFilter === '' || recipe.category === categoryFilter) &&
+        (dietFilter === '' || recipe.diet === dietFilter)
+    );
+    
+    displayRecipeCards(filteredRecipes);
+}
+
+function addToMealPlan(id) {
+    const recipe = recipes.find(r => r.id === id);
+    const day = prompt('Enter the day of the week (e.g., monday, tuesday, etc.):').toLowerCase();
+    if (mealPlan[day]) {
+        mealPlan[day].push(recipe);
+        alert(`${recipe.name} added to ${day}'s meal plan!`);
+    } else {
+        alert('Invalid day entered. Please try again.');
+    }
+}
+
+function showMealPlanner() {
+    const modal = document.getElementById('mealPlannerModal');
+    const mealPlanContainer = document.getElementById('mealPlanContainer');
+    
+    mealPlanContainer.innerHTML = '';
+    
+    Object.keys(mealPlan).forEach(day => {
+        const daySection = document.createElement('div');
+        daySection.className = 'meal-plan-day';
+        daySection.innerHTML = `
+            <h3>${day.charAt(0).toUpperCase() + day.slice(1)}</h3>
+            <ul>
+                ${mealPlan[day].map(recipe => `<li>${recipe.name}</li>`).join('')}
+            </ul>
+        `;
+        mealPlanContainer.appendChild(daySection);
+    });
+    
+    modal.style.display = 'block';
+}
+
+function addToShoppingList(id) {
+    const recipe = recipes.find(r => r.id === id);
+    shoppingList.push(...recipe.ingredients);
+    alert(`${recipe.name}'s ingredients added to your shopping list!`);
+}
+
+function showShoppingList() {
+    const modal = document.getElementById('shoppingListModal');
+    const shoppingListContainer = document.getElementById('shoppingListContainer');
+    
+    shoppingListContainer.innerHTML = shoppingList.length > 0 ?
+        shoppingList.map(item => `<li>${item}</li>`).join('') :
+        '<p>No items in your shopping list.</p>';
+    
+    modal.style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    displayRecipeCards();
+    setRecipeOfTheDay();
+    populateFilters();
+});
